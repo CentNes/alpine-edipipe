@@ -120,3 +120,30 @@ def cite(authority_id: str) -> str:
     """Short human string for logs / UI: 'RL-F25 — <citation>'."""
     a = by_id(authority_id)
     return f"{authority_id} — {a['citation']}" if a else authority_id
+
+
+def display(catalogue_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Bilingual display text for an authority, or None if it can't be resolved.
+
+    Returns {title_es, title_en, summary_es, summary_en, citation, url} sourced
+    from the shared catalogue. Returns None when the id is falsy/unknown OR the
+    catalogue submodule isn't vendored — callers fall back to their own text so
+    a compliance surface never breaks offline. Older catalogue entries without
+    the *_es/*_en fields fall back to the monolingual title/summary.
+    """
+    if not catalogue_id:
+        return None
+    try:
+        a = by_id(catalogue_id)
+    except CatalogueUnavailable:
+        return None
+    if a is None:
+        return None
+    return {
+        "title_es": a.get("title_es") or a.get("title"),
+        "title_en": a.get("title_en") or a.get("title"),
+        "summary_es": a.get("summary_es") or a.get("summary"),
+        "summary_en": a.get("summary_en") or a.get("summary"),
+        "citation": a.get("citation"),
+        "url": a.get("url"),
+    }
