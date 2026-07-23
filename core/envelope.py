@@ -37,9 +37,6 @@ class TransactionSet:
     delims: Delimiters
     ordinal: int  # 1-based position within the interchange
 
-    def element(self, seg: Segment, idx: int) -> str | None:
-        return _at(seg, idx)
-
 
 @dataclass
 class FunctionalGroup:

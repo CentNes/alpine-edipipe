@@ -87,10 +87,6 @@ def by_domain(domain: str) -> List[Dict[str, Any]]:
     return [a for a in _load()["authorities"] if domain in a.get("domains", [])]
 
 
-def by_jurisdiction(jurisdiction: str) -> List[Dict[str, Any]]:
-    return [a for a in _load()["authorities"] if a.get("jurisdiction") == jurisdiction]
-
-
 def mappings_for_app(app: str = APP) -> List[Dict[str, Any]]:
     """Rule->artifact mappings scoped to this app plus the shared set."""
     return [m for m in _load()["mappings"] if m.get("app") in (app, "shared")]
@@ -114,12 +110,6 @@ def authorities_for_artifact(artifact: str, app: str = APP) -> List[Dict[str, An
             seen.add(i)
             ordered.append(i)
     return by_ids(ordered)
-
-
-def cite(authority_id: str) -> str:
-    """Short human string for logs / UI: 'RL-F25 — <citation>'."""
-    a = by_id(authority_id)
-    return f"{authority_id} — {a['citation']}" if a else authority_id
 
 
 def display(catalogue_id: Optional[str]) -> Optional[Dict[str, Any]]:
