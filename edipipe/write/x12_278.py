@@ -40,10 +40,13 @@ def build_278(
     receiver: str,
     interchange_date: date,
     control: str,
+    as_response: bool = True,
     umo_name: str = "FIRST MEDICAL",
     requester_name: str = "PROVIDER",
     delims: Delimiters = Delimiters(),
 ) -> str:
+    """Generate a 278. as_response=True emits the HCR decision (→ a response the
+    reader classifies as "response"); as_response=False omits HCR (→ a request)."""
     comp = delims.component
     body: list[Segment] = [
         ["BHT", "0007", "11", "0001", interchange_date.strftime("%Y%m%d"), "1200"],
@@ -63,8 +66,9 @@ def build_278(
         body.append(
             ["UM", r.request_category or "HS", r.certification_type or "I", r.service_type or ""]
         )
-        # HCR (decision) is what makes this a RESPONSE.
-        body.append(["HCR", r.action or "A1", r.review_id or ""])
+        # HCR (decision) is what makes this a RESPONSE; omit it for a request.
+        if as_response:
+            body.append(["HCR", r.action or "A1", r.review_id or ""])
         if r.cert_number:
             body.append(["REF", "BB", r.cert_number])
         if r.diagnosis_codes:

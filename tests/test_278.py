@@ -34,3 +34,18 @@ def test_278_response_roundtrips_through_reader():
     assert r.request_category == "HS" and r.certification_type == "I"
     assert r.service_type == "3"
     assert r.from_date == date(2026, 7, 1) and r.to_date == date(2026, 7, 5)
+
+
+def test_278_request_has_no_decision():
+    # as_response=False omits HCR → the reader classifies it as a request.
+    reviews = [
+        ServiceReview(member_id="M1", request_category="HS", certification_type="I",
+                      service_type="3", from_date=date(2026, 7, 1))
+    ]
+    raw = build_278(reviews, sender="PROV1", receiver="ALPINEFM",
+                    interchange_date=date(2026, 7, 25), control="1", as_response=False)
+    parsed = parse_278(raw)
+    assert parsed.kind == "request"
+    r = parsed.reviews[0]
+    assert r.member_id == "M1" and r.action is None
+    assert r.request_category == "HS" and r.service_type == "3"
