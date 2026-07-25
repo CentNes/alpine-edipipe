@@ -64,11 +64,13 @@ def build_277(
         parent = "3"
 
     hl = int(parent) + 1
-    for c in claims:
+    for i, c in enumerate(claims):
         body.append(["HL", str(hl), parent, "22", "0"])
         body.append(["NM1", "IL", "1", "", "", "", "", "", "MI", c.member_id or ""])
-        if c.trace_number:
-            body.append(["TRN", "2", c.trace_number])
+        # TRN is required in 005010X212 AND the reader creates one ClaimStatus per
+        # TRN — a trace-less claim would be dropped or corrupt its neighbour, so
+        # always emit one (synthesizing a control number when the caller has none).
+        body.append(["TRN", "2", c.trace_number or f"NOTRACE{i + 1}"])
         category = c.status_category or "F1"
         composite = f"{category}{comp}{c.status_code}" if c.status_code else category
         status_date = c.status_date.strftime("%Y%m%d") if c.status_date else ""

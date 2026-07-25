@@ -62,6 +62,12 @@ def build_271(
         if subj.dob or subj.gender:
             body.append(["DMG", "D8", _d8(subj.dob), subj.gender or ""])
         for b in subj.benefits:
+            # CONFORMANCE GAP (tracked): EB03 service types are a REPEATING element
+            # (repetition separator) in 005010X279A1, not a composite. This joins on
+            # the component sep to match the current reader, which also splits EB03 on
+            # component — reader+writer must be fixed together (and gen_270 updated),
+            # so it's deferred until the eligibility generators are wired to a real
+            # payer. A conformant clearinghouse would reject the component form.
             services = comp.join(b.service_types) if b.service_types else ""
             body.append(
                 ["EB", b.code or "", b.coverage_level or "", services,

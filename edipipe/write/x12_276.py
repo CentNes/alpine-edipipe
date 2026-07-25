@@ -40,11 +40,11 @@ def build_276(
         ["NM1", "41", "2", source_name, "", "", "", "", "46", sender],     # requester
     ]
     hl = 3
-    for c in claims:
+    for i, c in enumerate(claims):
         body.append(["HL", str(hl), "2", "22", "0"])
         body.append(["NM1", "IL", "1", "", "", "", "", "", "MI", c.member_id or ""])
-        if c.trace_number:
-            body.append(["TRN", "1", c.trace_number])
+        # TRN required (X212) and the reader keys each claim on it — always emit.
+        body.append(["TRN", "1", c.trace_number or f"NOTRACE{i + 1}"])
         if c.patient_control_number:
             body.append(["REF", "EJ", c.patient_control_number])
         if c.payer_claim_control_number:

@@ -39,3 +39,19 @@ def test_277_roundtrips_through_reader():
 
     b = next(c for c in parsed.claims if c.member_id == "M2")
     assert b.status == "denied"
+
+
+def test_277_traceless_claims_all_survive():
+    # Regression (review Critical): TRN is required and the reader creates one claim
+    # per TRN — claims without a trace_number must NOT be dropped or overwrite a peer.
+    claims = [
+        ClaimStatus(member_id="M1", status_category="F1", paid_amount=Decimal("100.00")),
+        ClaimStatus(member_id="M2", status_category="F2", charge_amount=Decimal("300.00")),
+    ]
+    raw = build_277(claims, sender="S", receiver="R",
+                    interchange_date=date(2026, 7, 25), control="1")
+    parsed = parse_277(raw)
+    assert parsed.claim_count == 2
+    assert {c.member_id for c in parsed.claims} == {"M1", "M2"}
+    assert next(c for c in parsed.claims if c.member_id == "M1").status == "paid"
+    assert next(c for c in parsed.claims if c.member_id == "M2").status == "denied"

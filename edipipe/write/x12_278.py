@@ -72,7 +72,11 @@ def build_278(
         if r.cert_number:
             body.append(["REF", "BB", r.cert_number])
         if r.diagnosis_codes:
-            body.append(["HI"] + [f"ABK{comp}{dx}" for dx in r.diagnosis_codes])
+            # Principal diagnosis is ABK, secondaries ABF (005010X217).
+            body.append(
+                ["HI"] + [f"{'ABK' if i == 0 else 'ABF'}{comp}{dx}"
+                          for i, dx in enumerate(r.diagnosis_codes)]
+            )
         dtp = _event_dtp(r)
         if dtp:
             body.append(dtp)

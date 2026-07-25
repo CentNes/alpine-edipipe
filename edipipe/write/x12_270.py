@@ -48,6 +48,10 @@ def build_270(
             dob = s.dob.strftime("%Y%m%d") if s.dob else ""
             body.append(["DMG", "D8", dob, s.gender or ""])
         if s.inquiries:
+            # CONFORMANCE GAP (tracked, same as EB03 in x12_271): EQ service-type
+            # codes are a REPEATING element (repetition sep), not a composite. Joined
+            # on the component sep to match the reader; fix reader+writer together when
+            # the eligibility generators are wired to a real payer.
             body.append(["EQ", comp.join(s.inquiries)])
         hl += 1
 
