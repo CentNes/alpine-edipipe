@@ -1,5 +1,12 @@
 """Transaction-agnostic X12 core: delimiters, envelope, conversions, errors."""
 
+from edipipe.core.build import (
+    OutGroup,
+    OutTransaction,
+    build_interchange,
+    build_isa,
+    render_segment,
+)
 from edipipe.core.convert import dec, ymd8
 from edipipe.core.delimiters import Delimiters
 from edipipe.core.envelope import (
@@ -20,4 +27,9 @@ __all__ = [
     "EnvelopeError",
     "dec",
     "ymd8",
+    "build_interchange",
+    "build_isa",
+    "render_segment",
+    "OutGroup",
+    "OutTransaction",
 ]
