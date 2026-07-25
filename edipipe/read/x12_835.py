@@ -284,9 +284,14 @@ def read_835(ts: TransactionSet) -> Transaction835:
             )
             claim.services.append(service)
 
-        elif tag == "LQ" and service is not None:
+        elif tag == "LQ":
+            # LQ*HE carries a RARC. It normally sits in the service (2110) loop,
+            # but a claim-level LQ (no open SVC) attaches to the claim rather
+            # than being dropped.
             if _elem(seg, 1) == "HE" and _elem(seg, 2):
-                service.remark_codes.append(seg[2])
+                target = service if service is not None else claim
+                if target is not None:
+                    target.remark_codes.append(seg[2])
 
         elif tag == "PLB":
             fiscal = _d8(_elem(seg, 2))
