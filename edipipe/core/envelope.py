@@ -54,6 +54,8 @@ class Interchange:
     receiver_id: str | None  # ISA08
     control: str | None  # ISA13
     usage: str | None  # ISA15 ("P" production / "T" test)
+    sender_qualifier: str | None = None  # ISA05 (e.g. "30" = FEIN, "ZZ" = mutually defined)
+    receiver_qualifier: str | None = None  # ISA07
     groups: list[FunctionalGroup] = field(default_factory=list)
 
     def transaction_sets(self, code: str | None = None) -> list[TransactionSet]:
@@ -91,6 +93,8 @@ def parse_envelope(raw: str) -> Interchange:
         receiver_id=(_at(isa, 8) or "").strip() or None,
         control=_at(isa, 13),
         usage=_at(isa, 15),
+        sender_qualifier=(_at(isa, 5) or "").strip() or None,
+        receiver_qualifier=(_at(isa, 7) or "").strip() or None,
     )
 
     current_group: FunctionalGroup | None = None
