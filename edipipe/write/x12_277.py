@@ -47,6 +47,8 @@ def build_277(
     source_name: str = "FIRST MEDICAL",
     receiver_name: str = "SUBMITTER",
     provider_name: str | None = None,
+    functional_id: str = "HN",
+    version: str = "005010X212",
     delims: Delimiters = Delimiters(),
 ) -> str:
     comp = delims.component
@@ -87,7 +89,7 @@ def build_277(
         hl += 1
 
     return build_interchange(
-        [OutGroup("HN", "005010X212", [OutTransaction("277", body, control="0001")])],
+        [OutGroup(functional_id, version, [OutTransaction("277", body, control="0001")])],
         sender=sender,
         receiver=receiver,
         interchange_date=interchange_date,

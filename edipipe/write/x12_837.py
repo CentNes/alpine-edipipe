@@ -221,11 +221,14 @@ def _build_gs(
     receiver_code: str,
     control_number: str,
     x12_type: str,
+    version: str | None = None,
+    functional_id: str | None = None,
 ) -> str:
     now = datetime.now()
     # GS01 for every 837 (I/P/D) is "HC" per X12 005010; "HP" is the 835 code.
-    func_id = "HC"
-    version = "005010X223A2" if x12_type == "837I" else "005010X222A1"
+    # A partner's conformance profile may override the version (e.g. 837I X223A3).
+    func_id = functional_id or "HC"
+    version = version or ("005010X223A2" if x12_type == "837I" else "005010X222A1")
     return _seg(
         "GS",
         func_id,
@@ -239,8 +242,8 @@ def _build_gs(
     )
 
 
-def _build_st(control_number: str, x12_type: str) -> str:
-    version = "005010X223A2" if x12_type == "837I" else "005010X222A1"
+def _build_st(control_number: str, x12_type: str, version: str | None = None) -> str:
+    version = version or ("005010X223A2" if x12_type == "837I" else "005010X222A1")
     return _seg("ST", "837", _pad(control_number, 4), version)
 
 
@@ -590,6 +593,8 @@ def generate_x12(
     x12_type: str,
     is_production: bool = False,
     payer_edits: dict[str, Any] | None = None,
+    version: str | None = None,
+    functional_id: str | None = None,
 ) -> X12GenerationResult:
     """Generate a complete X12 837 interchange from claim data.
 
@@ -606,8 +611,8 @@ def generate_x12(
     segments: list[str] = []
 
     segments.append(_build_isa(sender_id, receiver_id, control.isa_control, is_production))
-    segments.append(_build_gs(sender_id, receiver_id, control.gs_control, x12_type))
-    segments.append(_build_st(control.st_control, x12_type))
+    segments.append(_build_gs(sender_id, receiver_id, control.gs_control, x12_type, version, functional_id))
+    segments.append(_build_st(control.st_control, x12_type, version))
     segments.append(_build_bht(x12_type))
 
     submitter_name = edits.get("submitter_name", sender_id)
