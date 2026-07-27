@@ -30,6 +30,8 @@ def build_276(
     control: str,
     source_name: str = "PROVIDER",
     receiver_name: str = "FIRST MEDICAL",
+    functional_id: str = "HR",
+    version: str = "005010X212",
     delims: Delimiters = Delimiters(),
 ) -> str:
     body: list[Segment] = [
@@ -62,7 +64,7 @@ def build_276(
         hl += 1
 
     return build_interchange(
-        [OutGroup("HR", "005010X212", [OutTransaction("276", body, control="0001")])],
+        [OutGroup(functional_id, version, [OutTransaction("276", body, control="0001")])],
         sender=sender,
         receiver=receiver,
         interchange_date=interchange_date,

@@ -43,6 +43,8 @@ def build_278(
     as_response: bool = True,
     umo_name: str = "FIRST MEDICAL",
     requester_name: str = "PROVIDER",
+    functional_id: str = "HI",
+    version: str = "005010X217",
     delims: Delimiters = Delimiters(),
 ) -> str:
     """Generate a 278. as_response=True emits the HCR decision (→ a response the
@@ -83,7 +85,7 @@ def build_278(
         hl += 2
 
     return build_interchange(
-        [OutGroup("HI", "005010X217", [OutTransaction("278", body, control="0001")])],
+        [OutGroup(functional_id, version, [OutTransaction("278", body, control="0001")])],
         sender=sender,
         receiver=receiver,
         interchange_date=interchange_date,
