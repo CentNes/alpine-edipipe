@@ -48,6 +48,7 @@ class EncProcedure:
 @dataclass
 class Encounter837I:
     patient_control_number: str
+    member_id: str | None = None  # 2010BA subscriber NM1*IL NM109
     facility_code: str | None = None  # CLM05-1 (e.g. "11" inpatient)
     frequency_code: str | None = None  # CLM05-3
     admission_type: str | None = None  # CL101
@@ -113,12 +114,17 @@ def read_837i(ts: TransactionSet) -> list[Encounter837I]:
     enc: Encounter837I | None = None
     cur_dob: date | None = None
     cur_gender: str | None = None
+    cur_member_id: str | None = None
 
     for seg in ts.segments:
         tag = seg[0]
         if tag == "DMG":
             cur_dob = _d8(_elem(seg, 2))
             cur_gender = _elem(seg, 3)
+        elif tag == "NM1" and _elem(seg, 1) == "IL":
+            # 2010BA subscriber — member id at NM109. Buffered before the CLM,
+            # like DMG, since NM1*IL precedes it in the loop.
+            cur_member_id = _elem(seg, 9)
         elif tag == "CLM":
             pcn = _elem(seg, 1)
             if pcn is None:
@@ -131,6 +137,7 @@ def read_837i(ts: TransactionSet) -> list[Encounter837I]:
                 frequency = p[2] if len(p) > 2 and p[2] else None
             enc = Encounter837I(
                 patient_control_number=pcn,
+                member_id=cur_member_id,
                 facility_code=facility_code,
                 frequency_code=frequency,
                 total_charge=_dec(_elem(seg, 2)),
