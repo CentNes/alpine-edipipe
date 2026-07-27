@@ -61,6 +61,8 @@ def build_isa(
     control: str,
     time_: str = "1200",
     usage: str = "P",
+    sender_qualifier: str = "ZZ",
+    receiver_qualifier: str = "ZZ",
 ) -> str:
     """Emit the fixed-width ISA segment honoring `delims`.
 
@@ -74,8 +76,8 @@ def build_isa(
         "ISA",
         "00", " " * 10,           # ISA01/02 authorization
         "00", " " * 10,           # ISA03/04 security
-        "ZZ", sender[:15].ljust(15),    # ISA05/06
-        "ZZ", receiver[:15].ljust(15),  # ISA07/08
+        f"{sender_qualifier:<2}"[:2], sender[:15].ljust(15),      # ISA05/06
+        f"{receiver_qualifier:<2}"[:2], receiver[:15].ljust(15),  # ISA07/08
         interchange_date.strftime("%y%m%d"),  # ISA09 YYMMDD
         time_,                    # ISA10 HHMM
         delims.repetition,        # ISA11 repetition separator
@@ -98,6 +100,8 @@ def build_interchange(
     delims: Delimiters = Delimiters(),
     time_: str = "1200",
     usage: str = "P",
+    sender_qualifier: str = "ZZ",
+    receiver_qualifier: str = "ZZ",
 ) -> str:
     """Compose ISA..IEA from outbound groups, computing all control counts.
 
@@ -114,6 +118,8 @@ def build_interchange(
             control=control,
             time_=time_,
             usage=usage,
+            sender_qualifier=sender_qualifier,
+            receiver_qualifier=receiver_qualifier,
         )
     ]
     gs_date = interchange_date.strftime("%Y%m%d")  # GS04 is CCYYMMDD (8), unlike ISA09
