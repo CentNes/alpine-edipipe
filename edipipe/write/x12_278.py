@@ -11,7 +11,8 @@ parse_278(build_278(...)).kind == "response".
 
 Round-trips through parse_278: reproduces each review's member id, request
 category / certification type / service type, decision action + review id,
-authorization number, diagnoses and dates. Reuses the reader's ServiceReview shape.
+authorization number, diagnoses and dates, plus per-service (2000F) loops with
+their own service type and decision. Reuses the reader's ServiceReview shape.
 """
 
 from __future__ import annotations
@@ -58,13 +59,15 @@ def build_278(
         ["NM1", "1P", "2", requester_name, "", "", "", "", "XX", receiver],
     ]
 
-    hl = 3
+    hl = 2  # highest HL id assigned so far (1 = UMO, 2 = requester)
     for r in reviews:
-        subscriber_hl = hl
+        subscriber_hl = hl + 1
         body.append(["HL", str(subscriber_hl), "2", "22", "1"])
         body.append(["NM1", "IL", "1", "", "", "", "", "", "MI", r.member_id or ""])
-        event_hl = hl + 1
-        body.append(["HL", str(event_hl), str(subscriber_hl), "EV", "0"])
+        event_hl = subscriber_hl + 1
+        body.append(
+            ["HL", str(event_hl), str(subscriber_hl), "EV", "1" if r.services else "0"]
+        )
         body.append(
             ["UM", r.request_category or "HS", r.certification_type or "I", r.service_type or ""]
         )
@@ -82,7 +85,25 @@ def build_278(
         dtp = _event_dtp(r)
         if dtp:
             body.append(dtp)
-        hl += 2
+        hl = event_hl
+
+        # 2000F service-level (SS) loops. Mirror what the reader reads: per
+        # service, the service type (UM03) and, in a response, the decision (HCR).
+        for svc in r.services:
+            service_hl = hl + 1
+            body.append(["HL", str(service_hl), str(event_hl), "SS", "0"])
+            body.append(
+                ["UM", r.request_category or "HS", r.certification_type or "I",
+                 svc.service_type or ""]
+            )
+            if as_response:
+                body.append(
+                    ["HCR", svc.action or r.action or "A1",
+                     svc.review_id or r.review_id or ""]
+                )
+            if svc.cert_number:
+                body.append(["REF", "BB", svc.cert_number])
+            hl = service_hl
 
     return build_interchange(
         [OutGroup(functional_id, version, [OutTransaction("278", body, control="0001")])],
