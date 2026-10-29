@@ -33,6 +33,7 @@ class ClaimLine837:
     units: Decimal = Decimal("1")
     place_of_service: str | None = None  # SV1-5
     diagnosis_pointers: list[str] = field(default_factory=list)  # SV1-7
+    rendering_npi: str | None = None  # NM1*82 in 2420A (overrides the claim's)
     service_date: date | None = None  # DTP*472
     service_date_to: date | None = None
 
@@ -45,17 +46,22 @@ class Claim837:
     facility_code: str | None = None  # CLM05-1 (POS for 837P, bill-type facility for 837I)
     frequency_code: str | None = None  # CLM05-3 (1 original, 7 replacement, 8 void)
     original_claim_number: str | None = None  # REF*F8
-    member_id: str | None = None  # NM1*IL NM109
+    member_id: str | None = None  # NM1*IL NM109 (subscriber, 2010BA)
     member_last: str | None = None
     member_first: str | None = None
     member_dob: date | None = None
     member_gender: str | None = None
+    patient_last: str | None = None  # NM1*QC (dependent patient, 2010CA); None when patient = subscriber
+    patient_first: str | None = None
+    patient_dob: date | None = None
+    patient_gender: str | None = None
     payer_name: str | None = None
     payer_id: str | None = None
     billing_npi: str | None = None
     billing_name: str | None = None
     billing_tax_id: str | None = None
     attending_npi: str | None = None  # NM1*71
+    rendering_npi: str | None = None  # NM1*82 (claim level, 2310B)
     referring_npi: str | None = None  # NM1*DN
     facility_npi: str | None = None  # NM1*77
     statement_from: date | None = None  # DTP*434 / 431
@@ -91,21 +97,28 @@ def read_837(ts: TransactionSet, claim_type: str) -> list[Claim837]:
     claim: Claim837 | None = None
     line: ClaimLine837 | None = None
     sub: dict[str, object] = {}
+    patient: dict[str, object] = {}
     billing: dict[str, str | None] = {}
+    level: str | None = None
 
     for seg in ts.segments:
         tag = seg[0]
         if tag == "HL":
             claim, line = None, None
-            if _elem(seg, 3) == "20":
+            level = _elem(seg, 3)
+            if level == "20":
                 billing = {}
-            elif _elem(seg, 3) in ("22", "23"):
-                sub = {}
+            elif level == "22":
+                sub, patient = {}, {}
+            elif level == "23":
+                patient = {}
         elif tag == "NM1":
             q = _elem(seg, 1)
             ident = _elem(seg, 9)
             if q == "IL":
                 sub.update(member_id=ident, last=_elem(seg, 3), first=_elem(seg, 4))
+            elif q == "QC":
+                patient.update(last=_elem(seg, 3), first=_elem(seg, 4))
             elif q == "PR":
                 sub.update(payer_name=_elem(seg, 3), payer_id=ident)
             elif q == "85":
@@ -113,6 +126,11 @@ def read_837(ts: TransactionSet, claim_type: str) -> list[Claim837]:
                     claim.billing_npi, claim.billing_name = ident, _elem(seg, 3)
                 else:
                     billing = {"npi": ident, "name": _elem(seg, 3)}
+            elif claim is not None and q == "82":
+                if line is not None:
+                    line.rendering_npi = ident
+                else:
+                    claim.rendering_npi = ident
             elif claim is not None and q == "71":
                 claim.attending_npi = ident
             elif claim is not None and q == "DN":
@@ -120,7 +138,8 @@ def read_837(ts: TransactionSet, claim_type: str) -> list[Claim837]:
             elif claim is not None and q == "77":
                 claim.facility_npi = ident
         elif tag == "DMG" and claim is None:
-            sub.update(dob=_d8(_elem(seg, 2)), gender=_elem(seg, 3))
+            target = patient if level == "23" else sub
+            target.update(dob=_d8(_elem(seg, 2)), gender=_elem(seg, 3))
         elif tag == "REF":
             q, v = _elem(seg, 1), _elem(seg, 2)
             if q == "EI":
@@ -146,6 +165,10 @@ def read_837(ts: TransactionSet, claim_type: str) -> list[Claim837]:
                 member_first=sub.get("first"),  # type: ignore[arg-type]
                 member_dob=sub.get("dob"),  # type: ignore[arg-type]
                 member_gender=sub.get("gender"),  # type: ignore[arg-type]
+                patient_last=patient.get("last"),  # type: ignore[arg-type]
+                patient_first=patient.get("first"),  # type: ignore[arg-type]
+                patient_dob=patient.get("dob"),  # type: ignore[arg-type]
+                patient_gender=patient.get("gender"),  # type: ignore[arg-type]
                 payer_name=sub.get("payer_name"),  # type: ignore[arg-type]
                 payer_id=sub.get("payer_id"),  # type: ignore[arg-type]
                 billing_npi=billing.get("npi"),

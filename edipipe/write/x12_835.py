@@ -13,6 +13,7 @@ dataclasses so read and write share one shape.
 from __future__ import annotations
 
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
@@ -20,6 +21,20 @@ from edipipe.core import Delimiters, OutGroup, OutTransaction, build_interchange
 from edipipe.read.x12_835 import Adjustment835, Transaction835
 
 Segment = list[str]
+
+
+@dataclass
+class AchDetails:
+    """BPR06–BPR15 for an ACH (CCP/CTX) payment: originating and receiving bank accounts."""
+
+    sender_dfi: str  # BPR07 ABA routing number
+    sender_account: str  # BPR09
+    originating_company_id: str  # BPR10 (1 + payer TIN)
+    receiver_dfi: str  # BPR13
+    receiver_account: str  # BPR15
+    payment_format: str = "CCP"  # BPR04
+    sender_account_qualifier: str = "DA"  # BPR08
+    receiver_account_qualifier: str = "DA"  # BPR14
 
 
 def _d8(d: date | None) -> str:
@@ -56,12 +71,22 @@ def build_835(
     functional_id: str = "HP",
     version: str = "005010X221A1",
     delims: Delimiters = Delimiters(),
+    ach: AchDetails | None = None,
 ) -> str:
+    """ACH payments require `ach` (bank details); use CHK/NON/FWT otherwise."""
     comp = delims.component
     pay_date = txn.payment_date or interchange_date
-    method = txn.payment_method or ("ACH" if txn.payment_amount else "NON")
+    method = txn.payment_method or ("ACH" if ach else "CHK") if txn.payment_amount else "NON"
+    if method == "ACH" and ach is None:
+        raise ValueError("ACH remittance requires AchDetails (BPR06-BPR15)")
     bpr: Segment = ["BPR", "I" if txn.payment_amount else "H", _m(txn.payment_amount), "C", method]
-    bpr += [""] * 11 + [_d8(pay_date)]  # BPR05..BPR15 blank, BPR16 effective date
+    if method == "ACH" and ach is not None:
+        bpr += [ach.payment_format, "01", ach.sender_dfi, ach.sender_account_qualifier, ach.sender_account,
+                ach.originating_company_id, "", "01", ach.receiver_dfi, ach.receiver_account_qualifier,
+                ach.receiver_account]
+    else:
+        bpr += [""] * 11
+    bpr.append(_d8(pay_date))  # BPR16 effective date
     body: list[Segment] = [
         bpr,
         ["TRN", "1", txn.trace_number or control, "1" + (txn.payer_id or sender)[:9]],
@@ -90,9 +115,16 @@ def build_835(
         if c.rendering_npi:
             body.append(["NM1", "82", "1", c.rendering_name or "", "", "", "", "", "XX", c.rendering_npi])
         if c.drg_amount is not None or c.covered_days is not None:
-            body.append(["MIA", _m(c.covered_days) if c.covered_days is not None else "",
-                         _m(c.outlier_amount) if c.outlier_amount is not None else "", "",
-                         _m(c.drg_amount) if c.drg_amount is not None else ""])
+            # MIA05 + MIA20–MIA23 carry up to 5 claim remark codes.
+            rc = (c.remark_codes[:5] + [""] * 5)[:5]
+            mia: Segment = ["MIA", _m(c.covered_days) if c.covered_days is not None else "",
+                            _m(c.outlier_amount) if c.outlier_amount is not None else "", "",
+                            _m(c.drg_amount) if c.drg_amount is not None else "", rc[0]]
+            if any(rc[1:]):
+                mia += [""] * 14 + rc[1:]
+            while mia[-1] == "":
+                mia.pop()
+            body.append(mia)
         elif c.remark_codes:
             body.append(["MOA", "", ""] + c.remark_codes[:5])
         if c.statement_period_start:

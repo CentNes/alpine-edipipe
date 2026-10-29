@@ -73,3 +73,21 @@ def test_837i_roundtrip_with_replacement():
     assert c.attending_npi == "1888888886"
     assert [(ln.revenue_code, ln.procedure_code, ln.units) for ln in c.lines] == [
         ("0120", None, Decimal("3")), ("0300", "80053", Decimal("1"))]
+
+
+def test_837_dependent_patient_keeps_subscriber_and_rendering_npi():
+    raw = "~".join([
+        "ISA*00*          *00*          *ZZ*PROV1          *ZZ*ALPHP          *260903*1200*^*00501*000000102*0*T*:",
+        "GS*HC*PROV1*ALPHP*20260903*1200*102*X*005010X222A1", "ST*837*0001*005010X222A1",
+        "BHT*0019*00*B1*20260903*1200*CH", "HL*1**20*1", "NM1*85*2*CLINICA GRUPO*****XX*1234567893",
+        "REF*EI*660000001", "HL*2*1*22*1", "SBR*P**********MC", "NM1*IL*1*RIVERA*ANA****MI*SUB1",
+        "DMG*D8*19800101*F", "NM1*PR*2*ALPINE HEALTH PLAN*****PI*ALPHP", "HL*3*2*23*0", "PAT*19",
+        "NM1*QC*1*RIVERA*LUIS", "DMG*D8*20100101*M", "CLM*A1*100***11:B:1*Y*A*Y*Y", "HI*ABK:J069",
+        "NM1*82*1*SOTO*MARIA****XX*9876543210", "LX*1", "SV1*HC:99213*100*UN*1***1", "DTP*472*D8*20260902",
+        "NM1*82*1*CRUZ*JOSE****XX*1112223334", "SE*20*0001", "GE*1*102", "IEA*1*000000102",
+    ]) + "~"
+    c = parse_837(raw)[0]
+    assert c.member_id == "SUB1" and c.payer_id == "ALPHP" and c.member_dob == date(1980, 1, 1)
+    assert c.patient_first == "LUIS" and c.patient_dob == date(2010, 1, 1)
+    assert c.billing_npi == "1234567893" and c.rendering_npi == "9876543210"
+    assert c.lines[0].rendering_npi == "1112223334"

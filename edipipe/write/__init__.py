@@ -13,7 +13,7 @@ from edipipe.write.x12_271 import build_271
 from edipipe.write.x12_276 import build_276
 from edipipe.write.x12_277 import build_277
 from edipipe.write.x12_278 import build_278
-from edipipe.write.x12_835 import build_835
+from edipipe.write.x12_835 import AchDetails, build_835
 from edipipe.write.x12_837 import (
     X12ClaimData,
     X12Code,
@@ -28,6 +28,7 @@ from edipipe.write.x12_837 import (
 __all__ = [
     "generate_x12",
     "build_835",
+    "AchDetails",
     "build_270",
     "build_271",
     "build_276",

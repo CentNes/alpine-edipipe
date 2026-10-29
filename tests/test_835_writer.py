@@ -1,5 +1,6 @@
 """Round-trip: build_835(txn) → parse_835 reproduces the remittance."""
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -12,7 +13,9 @@ from edipipe.read.x12_835 import (
     Service835,
     Transaction835,
 )
-from edipipe.write import build_835
+import pytest
+
+from edipipe.write import AchDetails, build_835
 
 
 def _txn() -> Transaction835:
@@ -73,9 +76,41 @@ def _check(raw: str) -> None:
 
 def test_835_roundtrip():
     _check(build_835(_txn(), sender="ALPHP", receiver="1234567893",
-                     interchange_date=date(2026, 9, 12), control="7"))
+                     interchange_date=date(2026, 9, 12), control="7", ach=ACH))
 
 
 def test_835_roundtrip_custom_delimiters():
     _check(build_835(_txn(), sender="ALPHP", receiver="1234567893", interchange_date=date(2026, 9, 12),
-                     control="8", delims=Delimiters(element="|", component=">", segment="\n", repetition="^")))
+                     control="8", ach=ACH,
+                     delims=Delimiters(element="|", component=">", segment="\n", repetition="^")))
+
+
+ACH = AchDetails(sender_dfi="011000015", sender_account="000111", originating_company_id="1660000001",
+                 receiver_dfi="021000021", receiver_account="999888")
+
+
+def test_835_ach_requires_bank_details():
+    with pytest.raises(ValueError):
+        build_835(_txn(), sender="ALPHP", receiver="P", interchange_date=date(2026, 9, 12), control="9")
+    raw = build_835(_txn(), sender="ALPHP", receiver="P", interchange_date=date(2026, 9, 12), control="9", ach=ACH)
+    bpr = next(s for s in raw.split("~") if s.strip().startswith("BPR")).strip().split("*")
+    assert bpr[4:16] == ["ACH", "CCP", "01", "011000015", "DA", "000111", "1660000001", "", "01",
+                         "021000021", "DA", "999888"]
+    assert bpr[16] == "20260912"
+
+
+def test_835_check_payment_without_bank_details():
+    txn = replace(_txn(), payment_method=None)
+    t = parse_835(build_835(txn, sender="ALPHP", receiver="P", interchange_date=date(2026, 9, 12),
+                            control="10")).transactions[0]
+    assert t.payment_method == "CHK" and t.payment_amount == Decimal("142.50")
+
+
+def test_835_inpatient_keeps_claim_remarks():
+    txn = _txn()
+    txn.claims[0] = replace(txn.claims[0], covered_days=Decimal("3"), drg_amount=Decimal("80"),
+                            remark_codes=["N30", "MA01", "M15"])
+    c = parse_835(build_835(txn, sender="ALPHP", receiver="P", interchange_date=date(2026, 9, 12),
+                            control="11", ach=ACH)).transactions[0].claims[0]
+    assert c.covered_days == Decimal("3") and c.drg_amount == Decimal("80")
+    assert c.remark_codes == ["N30", "MA01", "M15"]
