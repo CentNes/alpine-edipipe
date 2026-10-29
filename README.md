@@ -9,8 +9,8 @@ Stdlib-only, no third-party runtime dependencies.
 ## Layout
 
 - `edipipe.core` — transaction-agnostic envelope walk + builder (`parse_envelope`, `build_interchange`)
-- `edipipe.read` — readers: 835, 999/277CA acks, 820, 834, 837I, 270/271, 276/277, 278
-- `edipipe.write` — generators: 837I/837P (`generate_x12`)
+- `edipipe.read` — readers: 835, 999/277CA acks, 820, 834, 837I (encounter), 837P/837I (claims, `parse_837`), 270/271, 276/277, 278
+- `edipipe.write` — generators: 837I/837P (`generate_x12`), 835 remittance (`build_835`), 271, 277, 278
 
 ## Use as a submodule
 

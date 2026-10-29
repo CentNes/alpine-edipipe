@@ -2,7 +2,7 @@
 
 Mirror of `edipipe.read`. 837I/837P (lifted from digitalizacion's claimspipe.x12gen,
 the portfolio's original production X12 writer) + payer-side response generators
-(271 eligibility, 277 claim status, 278 prior-auth decision) + provider-side inquiry
+(271 eligibility, 277 claim status, 278 prior-auth decision, 835 remittance) + provider-side inquiry
 generators (270 eligibility, 276 claim status, 278 request via `as_response=False`),
 all on `edipipe.core.build.build_interchange`. The kernel now reads AND writes every
 transaction it supports.
@@ -13,6 +13,7 @@ from edipipe.write.x12_271 import build_271
 from edipipe.write.x12_276 import build_276
 from edipipe.write.x12_277 import build_277
 from edipipe.write.x12_278 import build_278
+from edipipe.write.x12_835 import build_835
 from edipipe.write.x12_837 import (
     X12ClaimData,
     X12Code,
@@ -26,6 +27,7 @@ from edipipe.write.x12_837 import (
 
 __all__ = [
     "generate_x12",
+    "build_835",
     "build_270",
     "build_271",
     "build_276",
